@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import gdown
 from insightface.app import FaceAnalysis
@@ -14,8 +15,29 @@ import logging
 import requests
 import base64
 import json
+from pydantic import BaseModel
+from supabase import create_client, Client
+from typing import List
+
+# Supabase URL and API key (replace with your actual Supabase project URL and API key)
+SUPABASE_URL = "https://vfzahhknnbkkuwidgmfa.supabase.co"
+SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmemFoaGtubmJra3V3aWRnbWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzOTQ0MzIsImV4cCI6MjA0Njk3MDQzMn0.1xBDtTprTlchZZ_rKzdSnoHWgYNEF_5sS9pxyOlCuro"
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins for now (use specific origins for production)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods
+    allow_headers=["*"],  # Allows all headers
+)
+class User(BaseModel):
+    name: str
+    email: str
+
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -274,6 +296,32 @@ def add_two_logos_to_image(bg_img, logo_path1='1.png', logo_path2='2.png'):
         bg_img[logo2_y:logo2_y + logo2.shape[0], logo2_x:logo2_x + logo2.shape[1]] = logo2[:, :, :3]
 
     return bg_img
+
+@app.post("/api/submit")
+async def submit_user(user: User):
+    try:
+        # Insert user data into the 'users' table in Supabase
+        response = supabase.table("users").insert({
+            "name": user.name,
+            "email": user.email
+        }).execute()
+
+        # Log the response from Supabase for debugging
+        print(f"Supabase Response: {response.data}")  # Log the response data
+        
+        # Check if insertion was successful
+     
+        inserted_user = response.data[0]  # Get the inserted user data
+        return {
+                "id": inserted_user["id"],
+                "name": inserted_user["name"],
+                "email": inserted_user["email"]
+            }
+       
+    
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Error inserting user: {e}")
 
 
 
