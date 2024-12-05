@@ -12,6 +12,8 @@ import numpy as np
 from PIL import Image
 import logging
 import requests
+import base64
+import json
 
 app = FastAPI()
 
@@ -55,8 +57,109 @@ RESULT_FOLDER = 'results'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
+
+
+def generate_target_imagePinokio(custom_prompts=None):
+    clipdrop_api_key = '2cac03e37041e25b2d2931b8e4f5dc991d946f651f0062251f6007c50060f482953b8b19cd3fdee27c85b0d2b51bedb9'  # Replace with your actual Clipdrop API key
+    predefined_prompts_str = " realistic, photorealistic concept art, high quality digital art, cinematic, hyperrealism, photorealism, Nikon D850, 8K., sharp focus"
+
+    all_prompts = predefined_prompts_str
+    if custom_prompts:
+        all_prompts += "\n" + custom_prompts
+
+    pinokio_url = 'http://127.0.0.1:7860/sdapi/v1/txt2img'
+    
+
+    # data = {
+    #     'prompt': (None, all_prompts, 'text/plain')
+    # }
+    print(all_prompts)
+    payload = {
+        "alwayson_scripts": {
+            "API payload": {
+                "args": []
+            },
+            "AnimateDiff": {
+                "args": [{
+                    "batch_size": 16,
+                    "closed_loop": "R-P",
+                    "enable": False,
+                    "format": ["GIF", "PNG"],
+                    "fps": 8,
+                    "freeinit_ds": 0.25,
+                    "freeinit_dt": 0.25,
+                    "freeinit_enable": False,
+                    "freeinit_filter": "butterworth",
+                    "freeinit_iters": 3,
+                    "interp": "Off",
+                    "interp_x": 10,
+                    "is_i2i_batch": False,
+                    "last_frame": None,
+                    "latent_power": 1,
+                    "latent_power_last": 1,
+                    "latent_scale": 32,
+                    "latent_scale_last": 32,
+                    "loop_number": 0,
+                    "mask_path": "",
+                    "model": "",
+                    "overlap": -1,
+                    "prompt_scheduler": None,
+                    "request_id": "",
+                    "stride": 1,
+                    "video_default": False,
+                    "video_length": 0,
+                    "video_path": "",
+                    "video_source": None
+                }]
+            },
+        },
+      #  "prompt": all_prompts,  # Include the combined prompt
+        "prompt":custom_prompts ,
+        "batch_size": 1,
+        "cfg_scale": 7,
+        "denoising_strength": 0.7,
+        "height": 600,
+        "width": 400,
+        "n_iter": 1,
+        "sampler_name": "DPM++ 2M",
+        "seed": -1,
+        "restore_faces": True
+    }
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    # Send POST request to local API
+    try:
+        response = requests.post(pinokio_url, json=payload, headers=headers)
+
+        if response.ok:
+            print("hereeeeee")
+            # print(response.message)
+            data = response.json()  # Converts JSON to a Python dictionary
+            # print("JSON Response Data:")
+            # print(data)
+            base64_image_data = data["images"][0]
+            # print(base64_image_data)
+            # Decode the base64 string into binary data
+            image_data = base64.b64decode(base64_image_data)
+            # Save the image from the response
+            target_image_path = os.path.join(UPLOAD_FOLDER, 'target_image.png')
+            with open(target_image_path, 'wb') as f:
+                f.write(image_data)
+            logging.info(f"Target image generated and saved to {target_image_path}")
+            return target_image_path
+        else:
+            logging.error("Failed to fetch target image from local server")
+            raise HTTPException(status_code=500, detail="Failed to fetch target image from local server")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error occurred: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to local server")
+    
+
 # Function to fetch and save the target image using Clipdrop
-def generate_target_image(custom_prompts=None):
+def generate_target_imageClipdrop(custom_prompts=None):
     clipdrop_api_key = '2cac03e37041e25b2d2931b8e4f5dc991d946f651f0062251f6007c50060f482953b8b19cd3fdee27c85b0d2b51bedb9'  # Replace with your actual Clipdrop API key
     predefined_prompts_str = "photorealistic concept art, high quality digital art, cinematic, hyperrealism, photorealism, Nikon D850, 8K., sharp focus, emitting diodes, artillery, motherboard, by pascal blanche rutkowski repin artstation hyperrealism painting concept art of detailed character design matte painting, 4 k resolution"
 
@@ -77,6 +180,7 @@ def generate_target_image(custom_prompts=None):
     }
 
     response = requests.post(clipdrop_url, files=data, headers=headers)
+    print(response.images)
     if response.ok:
         target_image_path = os.path.join(UPLOAD_FOLDER, 'target_image.webp')
         with open(target_image_path, 'wb') as f:
@@ -190,7 +294,7 @@ async def swap_faces(sourceImage: UploadFile = File(...), prompt: str = Form("")
     logging.info(f"Source image shape: {sourceImage_cv.shape}")
 
     # Fetch target image from Clipdrop
-    target_img_path = generate_target_image(prompt)
+    target_img_path = generate_target_imagePinokio(prompt)
     targetImage_cv = cv2.imread(target_img_path)
 
     if targetImage_cv is None:

@@ -7,3 +7,4 @@ pretrained_models/*
 models/*
 env
 new_env
+myenv
