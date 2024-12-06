@@ -82,12 +82,17 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 
 
 def generate_target_imagePinokio(custom_prompts=None):
-    clipdrop_api_key = '2cac03e37041e25b2d2931b8e4f5dc991d946f651f0062251f6007c50060f482953b8b19cd3fdee27c85b0d2b51bedb9'  # Replace with your actual Clipdrop API key
-    predefined_prompts_str = " realistic, photorealistic concept art, high quality digital art, cinematic, hyperrealism, photorealism, Nikon D850, 8K., sharp focus"
+   # clipdrop_api_key = '2cac03e37041e25b2d2931b8e4f5dc991d946f651f0062251f6007c50060f482953b8b19cd3fdee27c85b0d2b51bedb9'  # Replace with your actual Clipdrop API key
+    predefined_prompts_str = ")) ((full body, clear face)) stands in full growth, photorealism, future,(intricate details:1.12), hdr, (intricate details, hyperdetailed:1.15), (natural skin texture, hyperrealism,  sharp:1.2), futurism, mechanics,((  looking straight at the camera, portrait,)), cinema, cinematic, cinematic light, cinema light, portrait, full face view, high detail, realism, photorealism, natural light, movie, unreal engine, concept artisuals"
 
-    all_prompts = predefined_prompts_str
+# Initialize all_prompts with custom_prompts if available, then append predefined_prompts_str
     if custom_prompts:
-        all_prompts += "\n" + custom_prompts
+     all_prompts = f"(({custom_prompts}))\n{predefined_prompts_str}"
+    else:
+        all_prompts = predefined_prompts_str
+
+# Print or use the combined prompt
+    print(all_prompts)
 
     pinokio_url = 'http://127.0.0.1:7860/sdapi/v1/txt2img'
     
@@ -103,7 +108,7 @@ def generate_target_imagePinokio(custom_prompts=None):
             },
             "AnimateDiff": {
                 "args": [{
-                    "batch_size": 16,
+                    "batch_size": 1,
                     "closed_loop": "R-P",
                     "enable": False,
                     "format": ["GIF", "PNG"],
@@ -137,6 +142,7 @@ def generate_target_imagePinokio(custom_prompts=None):
         },
       #  "prompt": all_prompts,  # Include the combined prompt
         "prompt":custom_prompts ,
+        "negative_prompt": "dof, grayscale, black and white, bw, 3d, cartoon, anime, sketches, (worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, bad anatomy, girl, loli, young, large breasts, red eyes, muscular,badhandsv5-neg, By bad artist -neg (1), monochrome,(EasyNegative:0.8), (worst quality, low quality:1.2), text,  bad quality, watermark, bad anatomy,",
         "batch_size": 1,
         "cfg_scale": 7,
         "denoising_strength": 0.7,
@@ -360,7 +366,8 @@ async def swap_faces(sourceImage: UploadFile = File(...), prompt: str = Form("")
 
     logging.info(f"Enhanced image shape: {enhanced_image.shape}")
 
-    final_image = add_two_logos_to_image(enhanced_image, '1.png', '2.png')
+    #final_image = add_two_logos_to_image(enhanced_image, '1.png', '2.png') 
+    final_image = enhanced_image
 
     result_filename = str(uuid.uuid4()) + '.jpg'
     result_path = os.path.join(RESULT_FOLDER, result_filename)
