@@ -5,3 +5,4 @@ gfpgan/weights/*
 outputs/*
 pretrained_models/*
 models/*
+env

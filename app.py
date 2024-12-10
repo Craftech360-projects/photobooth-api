@@ -1,3 +1,4 @@
+import sqlite3
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 import shutil
@@ -10,8 +11,18 @@ from gfpgan import GFPGANer
 import numpy as np
 from PIL import Image
 import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Update with allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +41,26 @@ UPLOAD_FOLDER = 'uploads'
 RESULT_FOLDER = 'results'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
+
+# Initialize SQLite database
+DATABASE = "user.db"
+
+def init_db():
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            result_image_path TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()  # Initialize the database on app startup
 
 def simple_face_swap(sourceImage, targetImage, face_app, swapper):
     logging.info("Starting face swap...")
@@ -65,9 +96,10 @@ def enhance_face(image):
         raise ValueError("Enhanced image is not a valid numpy array")
 
 @app.post("/api/swap-face/")
-async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...)):
+async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...), name: str = File(...), email: str = File(...)):
     img1_path = os.path.join(UPLOAD_FOLDER, sourceImage.filename)
     img2_path = os.path.join(UPLOAD_FOLDER, targetImage.filename)
+    print('userDetails',name,email)
 
     with open(img1_path, "wb") as buffer:
         shutil.copyfileobj(sourceImage.file, buffer)
@@ -99,6 +131,24 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
     result_path = os.path.join(RESULT_FOLDER, result_filename)
     cv2.imwrite(result_path, enhanced_image)
 
+    # Save user data in SQLite
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO users (name, email, result_image_path)
+            VALUES (?, ?, ?)
+            """,
+            (name, email, result_path),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logging.error(f"Failed to save user data in database: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save user data")
+
+    logging.info(f"User details saved: {name}, {email}, {result_path}")
     logging.info(f"Image saved to: {result_path}")
 
     return FileResponse(result_path)
