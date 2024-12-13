@@ -63,7 +63,7 @@ def init_db():
 init_db()  # Initialize the database on app startup
 
 def simple_face_swap(sourceImage, targetImage, face_app, swapper):
-    logging.info("Starting face swap...")
+    logging.info("Starting face swap..., ")
     facesimg1 = face_app.get(sourceImage)
     facesimg2 = face_app.get(targetImage)
     

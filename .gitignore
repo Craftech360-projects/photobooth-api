@@ -6,3 +6,4 @@ outputs/*
 pretrained_models/*
 models/*
 env
+myenv
