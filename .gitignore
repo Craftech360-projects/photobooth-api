@@ -4,4 +4,8 @@ gfpgan/weights/*
 outputs/*
 pretrained_models/*
 models/*
+<<<<<<< HEAD
 env/*
+=======
+env
+>>>>>>> 29f4956de4b0bfc1afb896b5b0740c099be08a12
