@@ -10,48 +10,18 @@ import uuid
 from gfpgan import GFPGANer
 import numpy as np
 from PIL import Image
-<<<<<<< HEAD
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="onnxruntime")
-=======
-import logging
-from fastapi.middleware.cors import CORSMiddleware
->>>>>>> 29f4956de4b0bfc1afb896b5b0740c099be08a12
 
 # Initialize FastAPI app
 app = FastAPI()
 
-<<<<<<< HEAD
-=======
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Update with allowed origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
-
-# Initialize FaceAnalysis
-face_app = FaceAnalysis(name='buffalo_l')
-face_app.prepare(ctx_id=0, det_size=(640, 640))
-
-swapper = insightface.model_zoo.get_model('inswapper/inswapper_128.onnx', download=False, download_zip=False)
-
-# Initialize GFPGAN for face enhancement
-gfpganer = GFPGANer(model_path='models/GFPGANv1.4.pth', upscale=1, arch='clean', channel_multiplier=2)
-
->>>>>>> 29f4956de4b0bfc1afb896b5b0740c099be08a12
 # Directory setup
 UPLOAD_FOLDER = 'uploads'
 RESULT_FOLDER = 'results'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-<<<<<<< HEAD
 # Initialize FaceAnalysis
 print("Initializing FaceAnalysis...")
 try:
@@ -61,36 +31,6 @@ try:
 except Exception as e:
     print(f"Error initializing FaceAnalysis: {e}")
     raise
-=======
-# Initialize SQLite database
-DATABASE = "user.db"
-
-def init_db():
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            result_image_path TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-init_db()  # Initialize the database on app startup
-
-def simple_face_swap(sourceImage, targetImage, face_app, swapper):
-    logging.info("Starting face swap...")
-    facesimg1 = face_app.get(sourceImage)
-    facesimg2 = face_app.get(targetImage)
-    
-    logging.info(f"Number of faces detected in source image: {len(facesimg1)}")
-    logging.info(f"Number of faces detected in target image: {len(facesimg2)}")
->>>>>>> 29f4956de4b0bfc1afb896b5b0740c099be08a12
-
 # Initialize Face Swapper
 print("Loading Face Swapper model...")
 try:
@@ -195,7 +135,6 @@ def enhance_face(image):
 
 
 @app.post("/api/swap-face/")
-<<<<<<< HEAD
 async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...)):
     """API endpoint for face swapping."""
     try:
@@ -206,12 +145,6 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
             shutil.copyfileobj(sourceImage.file, buffer)
         with open(tgt_path, "wb") as buffer:
             shutil.copyfileobj(targetImage.file, buffer)
-=======
-async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...), name: str = File(...), email: str = File(...)):
-    img1_path = os.path.join(UPLOAD_FOLDER, sourceImage.filename)
-    img2_path = os.path.join(UPLOAD_FOLDER, targetImage.filename)
-    print('userDetails',name,email)
->>>>>>> 29f4956de4b0bfc1afb896b5b0740c099be08a12
 
         # Load images
         source_img = load_image(src_path)
@@ -236,39 +169,6 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
         raise HTTPException(status_code=500, detail=str(e))
 
 
-<<<<<<< HEAD
 if __name__ == "__main__":
-=======
-    logging.info(f"Enhanced image shape: {enhanced_image.shape}")
-
-    result_filename = str(uuid.uuid4()) + '.jpg'
-    result_path = os.path.join(RESULT_FOLDER, result_filename)
-    cv2.imwrite(result_path, enhanced_image)
-
-    # Save user data in SQLite
-    try:
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO users (name, email, result_image_path)
-            VALUES (?, ?, ?)
-            """,
-            (name, email, result_path),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logging.error(f"Failed to save user data in database: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save user data")
-
-    logging.info(f"User details saved: {name}, {email}, {result_path}")
-    logging.info(f"Image saved to: {result_path}")
-
-    return FileResponse(result_path)
-
-# HTTP server
-if __name__ == '__main__':
->>>>>>> 29f4956de4b0bfc1afb896b5b0740c099be08a12
     import uvicorn
     uvicorn.run(app, host="localhost", port=8000)
