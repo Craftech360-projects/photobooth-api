@@ -95,30 +95,40 @@ def single_face_swap(source_img, target_img, face_app, swapper):
 
 
 def two_face_swap(source_img, target_img, face_app, swapper):
-    """Perform a two-face swap."""
-    print("Starting two-face swap...")
-    faces_src = face_app.get(source_img)
-    faces_tgt = face_app.get(target_img)
+    """
+    Perform a two-face swap.
+    Faces are sorted from left to right before swapping.
+    If less than two faces are detected in either image, it will swap as many as possible.
+    """
+    print("Starting face swap...")
+    faces_src = sorted(face_app.get(source_img) or [], key=lambda face: face.bbox[0])
+    faces_tgt = sorted(face_app.get(target_img) or [], key=lambda face: face.bbox[0])
 
     print(f"Faces detected in source image: {len(faces_src)}")
     print(f"Faces detected in target image: {len(faces_tgt)}")
 
-    if len(faces_src) < 2 or len(faces_tgt) < 2:
-        print("Less than two faces detected in one or both images.")
+    if not faces_src or not faces_tgt:
+        print("No faces detected in one or both images.")
         return None
 
     # Swap the first face from source with the first face from target
     face_src1 = faces_src[0]
-    face_tgt1 = faces_tgt[1]
+    face_tgt1 = faces_tgt[0]
     img_swapped1 = swapper.get(source_img, face_src1, face_tgt1, paste_back=True)
 
-    # Swap the second face from source with the second face from target
-    face_src2 = faces_src[1]
-    face_tgt2 = faces_tgt[0]
-    img_swapped2 = swapper.get(img_swapped1, face_src2, face_tgt2, paste_back=True)
-
-    print("Two-face swap completed.")
-    return img_swapped2
+    # If possible, swap the second face
+    if len(faces_src) > 1 and len(faces_tgt) > 1:
+        face_src1 = faces_src[0]
+        face_tgt1 = faces_tgt[1]
+        img_swapped = swapper.get(source_img, face_src1, face_tgt1, paste_back=True)
+        face_src2 = faces_src[1]
+        face_tgt2 = faces_tgt[0]
+        img_swapped2 = swapper.get(img_swapped, face_src2, face_tgt2, paste_back=True)
+        print("Two-face swap completed.")
+        return img_swapped2
+    else:
+        print("Single face swap completed.")
+        return img_swapped1
 
 
 def enhance_face(image):
@@ -151,8 +161,8 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
         target_img = load_image(tgt_path)
 
         # Perform face swap (use single or two-face swap as needed)
-        swapped_img = single_face_swap(source_img, target_img, face_app, swapper)
-        # swapped_img = two_face_swap(source_img, target_img, face_app, swapper)  # Uncomment if needed
+        # swapped_img = single_face_swap(source_img, target_img, face_app, swapper)
+        swapped_img = two_face_swap(source_img, target_img, face_app, swapper)  # Uncomment if needed
 
         if swapped_img is None:
             raise HTTPException(status_code=400, detail="Face swap failed.")
