@@ -1,5 +1,5 @@
 import sqlite3
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 import shutil
 from insightface.app import FaceAnalysis
@@ -13,15 +13,38 @@ from PIL import Image
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="onnxruntime")
 import requests
+import time
 
-# Initialize FastAPI app
+
+
 app = FastAPI()
 
-# Directory setup
-UPLOAD_FOLDER = 'uploads'
-RESULT_FOLDER = 'results'
+UPLOAD_FOLDER = "uploads"
+RESULT_FOLDER = "results"
+DB_PATH = "database.sqlite"  # SQLite database file path
+
+# Ensure upload and result folders exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
+
+# Initialize SQLite database
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS swaps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_name TEXT NOT NULL,
+            user_email TEXT NOT NULL,
+            image_name TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+# Initialize FastAPI app
+
 
 # Initialize FaceAnalysis
 print("Initializing FaceAnalysis...")
@@ -169,10 +192,51 @@ def enhance_face(image):
         raise HTTPException(status_code=500, detail="Face enhancement failed.")
 
 
+# @app.post("/api/swap-face/")
+# async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...)):
+#     """API endpoint for face swapping."""
+#     try:
+#         # Save uploaded files
+#         src_path = os.path.join(UPLOAD_FOLDER, sourceImage.filename)
+#         tgt_path = os.path.join(UPLOAD_FOLDER, targetImage.filename)
+#         with open(src_path, "wb") as buffer:
+#             shutil.copyfileobj(sourceImage.file, buffer)
+#         with open(tgt_path, "wb") as buffer:
+#             shutil.copyfileobj(targetImage.file, buffer)
+
+#         # Load images
+#         source_img = load_image(src_path)
+#         target_img = load_image(tgt_path)
+
+#         # Perform face swap (use single or two-face swap as needed)
+#         swapped_img = single_face_swap(source_img, target_img, face_app, swapper)
+#         # swapped_img = two_face_swap(source_img, target_img, face_app, swapper)  # Uncomment if needed
+
+#         if swapped_img is None:
+#             raise HTTPException(status_code=400, detail="Face swap failed.")
+
+#         # Enhance the swapped image
+#         enhanced_img = enhance_face(swapped_img)
+
+#         # Save the enhanced image
+#         result_path = save_image(enhanced_img, RESULT_FOLDER)
+        
+#         return FileResponse(result_path)
+#     except Exception as e:
+#         print(f"Error during face swap: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
 @app.post("/api/swap-face/")
-async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...)):
+async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...), name: str = Form(...), email: str = Form(...)):
     """API endpoint for face swapping."""
     try:
+        if not name or not email:
+            raise HTTPException(status_code=400, detail="Name and email are required.")
+        print(f"Received name: {name}, email: {email}")  # Log the name and email
+          
         # Save uploaded files
         src_path = os.path.join(UPLOAD_FOLDER, sourceImage.filename)
         tgt_path = os.path.join(UPLOAD_FOLDER, targetImage.filename)
@@ -185,9 +249,8 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
         source_img = load_image(src_path)
         target_img = load_image(tgt_path)
 
-        # Perform face swap (use single or two-face swap as needed)
+        # Perform face swap
         swapped_img = single_face_swap(source_img, target_img, face_app, swapper)
-        # swapped_img = two_face_swap(source_img, target_img, face_app, swapper)  # Uncomment if needed
 
         if swapped_img is None:
             raise HTTPException(status_code=400, detail="Face swap failed.")
@@ -197,8 +260,30 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
 
         # Save the enhanced image
         result_path = save_image(enhanced_img, RESULT_FOLDER)
+        result_filename = os.path.basename(result_path)
+
+        # Insert data into SQLite database
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO swaps (user_name, user_email, image_name)
+                VALUES (?, ?, ?)
+                """,
+                (name, email, result_filename),
+            )
+            conn.commit()
+            conn.close()
+            print(f"Data inserted into database: {name}, {email}, {result_filename}")
+        except sqlite3.Error as db_error:
+            print(f"Database error: {db_error}")
+            raise HTTPException(
+                status_code=500, detail="Failed to save data to the database."
+            )
 
         return FileResponse(result_path)
+
     except Exception as e:
         print(f"Error during face swap: {e}")
         raise HTTPException(status_code=500, detail=str(e))
