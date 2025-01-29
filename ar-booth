@@ -1,0 +1,178 @@
+
+
+# import sqlite3
+# from fastapi import FastAPI, File, UploadFile, HTTPException
+# from fastapi.responses import FileResponse
+# import shutil
+# from insightface.app import FaceAnalysis
+# import insightface
+# import cv2
+# import os
+# import uuid
+# from gfpgan import GFPGANer
+# import numpy as np
+# from PIL import Image
+# import warnings
+# warnings.filterwarnings("ignore", category=UserWarning, module="onnxruntime")
+
+# # Initialize FastAPI app
+# app = FastAPI()
+
+# # Directory setup
+# UPLOAD_FOLDER = 'uploads'
+# RESULT_FOLDER = 'results'
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# os.makedirs(RESULT_FOLDER, exist_ok=True)
+
+# # Initialize FaceAnalysis
+# print("Initializing FaceAnalysis...")
+# try:
+#     face_app = FaceAnalysis(name='buffalo_l')
+#     face_app.prepare(ctx_id=0, det_size=(640, 640))
+#     print("FaceAnalysis initialized successfully.")
+# except Exception as e:
+#     print(f"Error initializing FaceAnalysis: {e}")
+#     raise
+
+# # Initialize Face Swapper
+# print("Loading Face Swapper model...")
+# try:
+#     swapper = insightface.model_zoo.get_model('models/inswapper_128.onnx', download=False, download_zip=False)
+#     print("Face Swapper model loaded successfully.")
+# except Exception as e:
+#     print(f"Error loading Face Swapper model: {e}")
+#     raise
+
+# # Initialize GFPGAN for face enhancement
+# print("Loading GFPGAN model...")
+# try:
+#     gfpganer = GFPGANer(
+#         model_path='models/GFPGANv1.4.pth',
+#         upscale=1,
+#         arch='clean',
+#         channel_multiplier=2
+#     )
+#     print("GFPGAN model loaded successfully.")
+# except Exception as e:
+#     print(f"Error loading GFPGAN model: {e}")
+#     raise
+
+
+# def load_image(file_path):
+#     """Load an image using OpenCV."""
+#     image = cv2.imread(file_path)
+#     if image is None:
+#         print(f"Failed to load image: {file_path}")
+#         raise HTTPException(status_code=500, detail=f"Failed to load image: {file_path}")
+#     print(f"Image loaded: {file_path} (shape: {image.shape})")
+#     return image
+
+
+# def save_image(image, folder):
+#     """Save an image and return the file path."""
+#     file_name = f"{uuid.uuid4()}.jpg"
+#     file_path = os.path.join(folder, file_name)
+#     cv2.imwrite(file_path, image)
+#     print(f"Image saved: {file_path}")
+#     return file_path
+
+
+# def get_center_face(faces, img_width, img_height):
+#     """Find the face closest to the image center."""
+#     if not faces:
+#         return None
+#     img_center_x = img_width / 2
+#     img_center_y = img_height / 2
+#     min_distance = float('inf')
+#     center_face = None
+#     for face in faces:
+#         bbox = face.bbox
+#         face_center_x = (bbox[0] + bbox[2]) / 2
+#         face_center_y = (bbox[1] + bbox[3]) / 2
+#         distance = ((face_center_x - img_center_x)**2 + (face_center_y - img_center_y)**2)**0.5
+#         if distance < min_distance:
+#             min_distance = distance
+#             center_face = face
+#     return center_face
+
+# def single_face_swap(source_img, target_img, face_app, swapper):
+#     """Perform a single face swap on the center faces in the source image."""
+#     print("Starting single face swap...")
+#     faces_src = face_app.get(source_img)
+#     faces_tgt = face_app.get(target_img)
+
+#     print(f"Faces detected in source image: {len(faces_src)}")
+#     print(f"Faces detected in target image: {len(faces_tgt)}")
+
+#     if not faces_src or not faces_tgt:
+#         print("No faces detected in one or both images.")
+#         return None
+
+#     # Get image dimensions
+#     src_height, src_width = source_img.shape[:2]
+#     tgt_height, tgt_width = target_img.shape[:2]
+
+#     # Find center faces
+#     face_src = get_center_face(faces_src, src_width, src_height)
+#     face_tgt = get_center_face(faces_tgt, tgt_width, tgt_height)
+
+#     if face_src is None or face_tgt is None:
+#         print("No center face detected.")
+#         return None
+
+#     # Perform the swap on the source image
+#     swapped_img = swapper.get(source_img, face_src, face_tgt, paste_back=True)
+#     print("Single face swap completed.")
+#     return swapped_img
+
+
+# def enhance_face(image):
+#     """Enhance a face using GFPGAN."""
+#     print("Starting face enhancement...")
+#     _, _, restored_img = gfpganer.enhance(image, has_aligned=False, only_center_face=False, paste_back=True)
+
+#     if isinstance(restored_img, np.ndarray):
+#         print("Face enhancement completed.")
+#         return restored_img
+#     else:
+#         print("Face enhancement failed.")
+#         raise HTTPException(status_code=500, detail="Face enhancement failed.")
+
+
+# @app.post("/api/swap-face/")
+# async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...)):
+#     """API endpoint for face swapping."""
+#     try:
+#         # Save uploaded files
+#         src_path = os.path.join(UPLOAD_FOLDER, sourceImage.filename)
+#         tgt_path = os.path.join(UPLOAD_FOLDER, targetImage.filename)
+#         with open(src_path, "wb") as buffer:
+#             shutil.copyfileobj(sourceImage.file, buffer)
+#         with open(tgt_path, "wb") as buffer:
+#             shutil.copyfileobj(targetImage.file, buffer)
+
+#         # Load images
+#         source_img = load_image(src_path)
+#         target_img = load_image(tgt_path)
+
+#         # Perform face swap
+#         swapped_img = single_face_swap(source_img, target_img, face_app, swapper)
+
+#         if swapped_img is None:
+#             raise HTTPException(status_code=400, detail="Face swap failed.")
+
+#         # Enhance the swapped image
+#         enhanced_img = enhance_face(swapped_img)
+
+#         # Save the enhanced image
+#         result_path = save_image(enhanced_img, RESULT_FOLDER)
+
+#         return FileResponse(result_path)
+#     except Exception as e:
+#         print(f"Error during face swap: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="localhost", port=8000)

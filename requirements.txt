@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 absl-py==2.1.0
-=======
-﻿absl-py==2.1.0
->>>>>>> 29f4956de4b0bfc1afb896b5b0740c099be08a12
+absl-py==2.1.0
 addict==2.4.0
 aiofiles==23.2.1
 albucore==0.0.20
