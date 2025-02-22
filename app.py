@@ -14,10 +14,20 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="onnxruntime")
 import requests
 import time
+from fastapi.middleware.cors import CORSMiddleware
 
 
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "results"
@@ -59,7 +69,7 @@ except Exception as e:
 # Initialize Face Swapper
 print("Loading Face Swapper model...")
 model_path = 'models/inswapper_128.onnx'
-model_url = 'https://github.com/sergiomsmoreno/face_swap/releases/download/inswapper_128/inswapper_128.onnx'  # Replace with the actual download URL
+model_url = 'https://huggingface.co/ezioruan/inswapper_128.onnx/resolve/main/inswapper_128.onnx'
 
 # Ensure the 'models' directory exists
 os.makedirs(os.path.dirname(model_path), exist_ok=True)
