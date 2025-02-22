@@ -58,8 +58,29 @@ except Exception as e:
 
 # Initialize Face Swapper
 print("Loading Face Swapper model...")
+model_path = 'models/inswapper_128.onnx'
+model_url = 'https://github.com/sergiomsmoreno/face_swap/releases/download/inswapper_128/inswapper_128.onnx'  # Replace with the actual download URL
+
+# Ensure the 'models' directory exists
+os.makedirs(os.path.dirname(model_path), exist_ok=True)
+
+if not os.path.exists(model_path):
+    print("Face Swapper model not found. Downloading...")
+    try:
+        response = requests.get(model_url, stream=True)
+        response.raise_for_status()  # Raise an error for HTTP issues
+
+        with open(model_path, 'wb') as model_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    model_file.write(chunk)
+        print("Face Swapper model downloaded successfully.")
+    except Exception as download_error:
+        print(f"Error downloading Face Swapper model: {download_error}")
+        raise
+
 try:
-    swapper = insightface.model_zoo.get_model('models/inswapper_128.onnx', download=False, download_zip=False)
+    swapper = insightface.model_zoo.get_model(model_path, download=False, download_zip=False)
     print("Face Swapper model loaded successfully.")
 except Exception as e:
     print(f"Error loading Face Swapper model: {e}")
@@ -190,41 +211,6 @@ def enhance_face(image):
     else:
         print("Face enhancement failed.")
         raise HTTPException(status_code=500, detail="Face enhancement failed.")
-
-
-# @app.post("/api/swap-face/")
-# async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...)):
-#     """API endpoint for face swapping."""
-#     try:
-#         # Save uploaded files
-#         src_path = os.path.join(UPLOAD_FOLDER, sourceImage.filename)
-#         tgt_path = os.path.join(UPLOAD_FOLDER, targetImage.filename)
-#         with open(src_path, "wb") as buffer:
-#             shutil.copyfileobj(sourceImage.file, buffer)
-#         with open(tgt_path, "wb") as buffer:
-#             shutil.copyfileobj(targetImage.file, buffer)
-
-#         # Load images
-#         source_img = load_image(src_path)
-#         target_img = load_image(tgt_path)
-
-#         # Perform face swap (use single or two-face swap as needed)
-#         swapped_img = single_face_swap(source_img, target_img, face_app, swapper)
-#         # swapped_img = two_face_swap(source_img, target_img, face_app, swapper)  # Uncomment if needed
-
-#         if swapped_img is None:
-#             raise HTTPException(status_code=400, detail="Face swap failed.")
-
-#         # Enhance the swapped image
-#         enhanced_img = enhance_face(swapped_img)
-
-#         # Save the enhanced image
-#         result_path = save_image(enhanced_img, RESULT_FOLDER)
-        
-#         return FileResponse(result_path)
-#     except Exception as e:
-#         print(f"Error during face swap: {e}")
-#         raise HTTPException(status_code=500, detail=str(e))
 
 
 
