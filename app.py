@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Add CORS middleware
+#Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins
@@ -225,6 +225,66 @@ def enhance_face(image):
 
 
 
+# @app.post("/api/swap-face/")
+# async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...), name: str = Form(...), email: str = Form(...)):
+#     """API endpoint for face swapping."""
+#     try:
+#         if not name or not email:
+#             raise HTTPException(status_code=400, detail="Name and email are required.")
+#         print(f"Received name: {name}, email: {email}")  # Log the name and email
+          
+#         # Save uploaded files
+#         src_path = os.path.join(UPLOAD_FOLDER, sourceImage.filename)
+#         tgt_path = os.path.join(UPLOAD_FOLDER, targetImage.filename)
+#         with open(src_path, "wb") as buffer:
+#             shutil.copyfileobj(sourceImage.file, buffer)
+#         with open(tgt_path, "wb") as buffer:
+#             shutil.copyfileobj(targetImage.file, buffer)
+
+#         # Load images
+#         source_img = load_image(src_path)
+#         target_img = load_image(tgt_path)
+
+#         # Perform face swap
+#         swapped_img = single_face_swap(source_img, target_img, face_app, swapper)
+
+#         if swapped_img is None:
+#             raise HTTPException(status_code=400, detail="Face swap failed.")
+
+#         # Enhance the swapped image
+#         enhanced_img = enhance_face(swapped_img)
+
+#         # Save the enhanced image
+#         result_path = save_image(enhanced_img, RESULT_FOLDER)
+#         result_filename = os.path.basename(result_path)
+
+#         # Insert data into SQLite database
+#         try:
+#             conn = sqlite3.connect(DB_PATH)
+#             cursor = conn.cursor()
+#             cursor.execute(
+#                 """
+#                 INSERT INTO swaps (user_name, user_email, image_name)
+#                 VALUES (?, ?, ?)
+#                 """,
+#                 (name, email, result_filename),
+#             )
+#             conn.commit()
+#             conn.close()
+#             print(f"Data inserted into database: {name}, {email}, {result_filename}")
+#         except sqlite3.Error as db_error:
+#             print(f"Database error: {db_error}")
+#             raise HTTPException(
+#                 status_code=500, detail="Failed to save data to the database."
+#             )
+
+#         return FileResponse(result_path)
+
+#     except Exception as e:
+#         print(f"Error during face swap: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/swap-face/")
 async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFile = File(...), name: str = Form(...), email: str = Form(...)):
     """API endpoint for face swapping."""
@@ -232,7 +292,7 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
         if not name or not email:
             raise HTTPException(status_code=400, detail="Name and email are required.")
         print(f"Received name: {name}, email: {email}")  # Log the name and email
-          
+
         # Save uploaded files
         src_path = os.path.join(UPLOAD_FOLDER, sourceImage.filename)
         tgt_path = os.path.join(UPLOAD_FOLDER, targetImage.filename)
@@ -278,12 +338,37 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
                 status_code=500, detail="Failed to save data to the database."
             )
 
-        return FileResponse(result_path)
+        # Load the frame and the final image
+        frame = Image.open('uploads/frame.jpg')
+        final = Image.open(result_path)
+
+        # Scale factor to make the final image bigger (e.g., 1.1 for 10% larger, 1.2 for 20% larger)
+        scale_factor = 1.1  # Adjust this value as needed
+        new_width = int(final.width * scale_factor)
+        new_height = int(final.height * scale_factor)
+
+        # Resize the final image to the new dimensions
+        final = final.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        # Calculate the position to paste the final image
+        # We want the top of final.jpg to be 240 pixels from the top of frame.jpg
+        x = (frame.width - final.width) // 2  # Center horizontally
+        y = 280  # 280 pixels from the top
+
+        # Paste final.jpg onto frame.jpg at the calculated position
+        frame.paste(final, (x, y))
+
+        # Save the final composite image
+        final_output_path = os.path.join(UPLOAD_FOLDER, 'framed_final.jpg')
+        frame.save(final_output_path)
+
+        print(f"Final composite image saved: {final_output_path}")
+
+        return FileResponse(final_output_path)
 
     except Exception as e:
         print(f"Error during face swap: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 if __name__ == "__main__":
     import uvicorn
