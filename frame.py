@@ -29,7 +29,7 @@ frame = Image.open('uploads/frame.jpg')
 final = Image.open('results/final.jpg')
 
 # Scale factor to make the final image bigger (e.g., 1.1 for 10% larger, 1.2 for 20% larger)
-scale_factor = 1.1  # Adjust this value as needed
+scale_factor = 1.17  # Adjust this value as needed
 new_width = int(final.width * scale_factor)
 new_height = int(final.height * scale_factor)
 
