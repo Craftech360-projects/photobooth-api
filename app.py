@@ -343,7 +343,7 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
         final = Image.open(result_path)
 
         # Scale factor to make the final image bigger (e.g., 1.1 for 10% larger, 1.2 for 20% larger)
-        scale_factor = .70  # Adjust this value as needed
+        scale_factor = .83  # Adjust this value as needed
         new_width = int(final.width * scale_factor)
         new_height = int(final.height * scale_factor)
 
@@ -353,7 +353,7 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
         # Calculate the position to paste the final image
         # We want the top of final.jpg to be 240 pixels from the top of frame.jpg
         x = (frame.width - final.width) // 2  # Center horizontally
-        y = 190   # 280 pixels from the top
+        y = 210   # 280 pixels from the top
 
         # Paste final.jpg onto frame.jpg at the calculated position
         frame.paste(final, (x, y))

@@ -29,7 +29,7 @@ frame = Image.open('uploads/frame.jpg')
 final = Image.open('results/final.jpg')
 
 # Scale factor to make the final image bigger (e.g., 1.1 for 10% larger, 1.2 for 20% larger)
-scale_factor = .70  # Adjust this value as needed
+scale_factor = .83# Adjust this value as needed
 new_width = int(final.width * scale_factor)
 new_height = int(final.height * scale_factor)
 
@@ -39,8 +39,8 @@ final = final.resize((new_width, new_height), Image.Resampling.LANCZOS)
 # Calculate the position to paste the final image
 # We want the top of final.jpg to be 240 pixels from the top of frame.jpg
 x = (frame.width - final.width) // 2  # Center horizontally
-y = 190  # 280 pixels from the top
-
+y =  210   # 240 pixels from the top
+  
 # Paste final.jpg onto frame.jpg at the calculated position
 frame.paste(final, (x, y))
 
