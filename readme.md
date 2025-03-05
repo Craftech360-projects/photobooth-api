@@ -15,3 +15,20 @@ Processing Pipeline:
 
 Response:
 5. The FileResponse sends the enhanced image back to the client, allowing them to download the processed image file.
+
+
+build command 
+
+docker build -t face-swap .
+
+
+run command
+
+docker run -p 8000:8000 \
+  -v ./uploads:/app/uploads \
+  -v ./results:/app/results \
+  -v ./database.sqlite:/app/database.sqlite \
+  face-swap
+
+        
+
