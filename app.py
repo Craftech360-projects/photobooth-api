@@ -23,12 +23,11 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
+    allow_origins=["http://localhost:5173", "https://photbooth-htlpnss6x-rahulpscraftech360s-projects.vercel.app"],  # Add your frontend URLs
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Restrict allowed methods
+    allow_headers=["Content-Type", "Authorization"],  # Restrict allowed headers
 )
-
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "results"
 DB_PATH = "database.sqlite"  # SQLite database file path
