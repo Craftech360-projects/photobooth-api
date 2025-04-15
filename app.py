@@ -42,25 +42,26 @@ RESULT_FOLDER = 'results'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-# Initialize SQLite database
-DATABASE = "user.db"
 
-def init_db():
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            result_image_path TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
+def create_4x6_canvas(image, width=807, height=1059):
+    """
+    Resize image to specified dimensions and center it on a 4x6 canvas (1200x1800 pixels)
+    """
+    # Resize image to target dimensions
+    resized = cv2.resize(image, (width, height))
+    
+    # Create white canvas of 4x6 size (1200x1800 pixels)
+    canvas = np.full((1800, 1200, 3), 255, dtype=np.uint8)
+    
+    # Calculate position to center the image
+    x_offset = (1200 - width) // 2
+    y_offset = (1800 - height) // 2
+    
+    # Place the image in the center of canvas
+    canvas[y_offset:y_offset+height, x_offset:x_offset+width] = resized
+    
+    return canvas
 
-init_db()  # Initialize the database on app startup
 
 def simple_face_swap(sourceImage, targetImage, face_app, swapper):
     logging.info("Starting face swap..., ")
@@ -125,31 +126,14 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
 
     enhanced_image = enhance_face(swapped_image)
 
-    logging.info(f"Enhanced image shape: {enhanced_image.shape}")
+    # Add this line after enhancement
+    final_image = create_4x6_canvas(enhanced_image)
+
+    logging.info(f"Final image shape: {final_image.shape}")
 
     result_filename = str(uuid.uuid4()) + '.jpg'
     result_path = os.path.join(RESULT_FOLDER, result_filename)
-    cv2.imwrite(result_path, enhanced_image)
-
-    # Save user data in SQLite
-    try:
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO users (name, email, result_image_path)
-            VALUES (?, ?, ?)
-            """,
-            (name, email, result_path),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logging.error(f"Failed to save user data in database: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save user data")
-
-    logging.info(f"User details saved: {name}, {email}, {result_path}")
-    logging.info(f"Image saved to: {result_path}")
+    cv2.imwrite(result_path, final_image)
 
     return FileResponse(result_path)
 
