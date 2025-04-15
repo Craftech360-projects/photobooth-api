@@ -43,7 +43,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
 
-def create_4x6_canvas(image, width=807, height=1059):
+def create_4x6_canvas(image, width=706, height=927):
     """
     Resize image to specified dimensions and center it on a 4x6 canvas (1200x1800 pixels)
     """
