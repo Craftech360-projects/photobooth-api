@@ -148,8 +148,8 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
             shutil.copyfileobj(targetImage.file, buffer)
 
         # Load images
-        source_img = load_image(src_path)
-        target_img = load_image(tgt_path)
+        source_img = load_image(tgt_path)
+        target_img = load_image(src_path)
 
         # Perform face swap (use single or two-face swap as needed)
         swapped_img = single_face_swap(source_img, target_img, face_app, swapper)
