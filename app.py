@@ -286,4 +286,5 @@ async def swap_faces(sourceImage: UploadFile = File(...), targetImage: UploadFil
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    # Use port 3000 and IPv4 address for better compatibility on Windows
+    uvicorn.run(app, host="127.0.0.1", port=3000)
