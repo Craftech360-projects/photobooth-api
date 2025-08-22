@@ -23,10 +23,10 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://photbooth-htlpnss6x-rahulpscraftech360s-projects.vercel.app"],  # Add your frontend URLs
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Restrict allowed methods
-    allow_headers=["Content-Type", "Authorization"],  # Restrict allowed headers
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers for development
 )
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "results"
